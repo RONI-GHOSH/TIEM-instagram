@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: tiemgram-backend
+    ports:
+      - "5000:5000"
+    restart: always
+    environment:
+      - PORT=5000
+      - DB_NAME=postgres
+      - DB_USER=postgres
+      - DB_PASS=ycqgSVQ53yuI8FqBuGAN52lFhvbwxFpT0XDLK6cePyVNUxfiXmYdEc5lf9tjKlRf
+      - DB_HOST=187.127.157.13
+      - DB_PORT=5532
+      - JWT_SECRET=your_super_secret_access_token_key_123
+      - JWT_REFRESH_SECRET=your_super_secret_refresh_token_key_456
+      - EMAIL_SERVICE=gmail
+      - EMAIL_USER=your_email@gmail.com
+      - EMAIL_PASS=your_app_password
+      - NODE_ENV=production
+      - CLOUDINARY_API_KEY=182445911956875
+      - CLOUDINARY_API_SECRET=ZwPN80SyTqd8TJs_lyUsz794Hag
+      - CLOUDINARY_CLOUD_NAME=dd3drikgz
