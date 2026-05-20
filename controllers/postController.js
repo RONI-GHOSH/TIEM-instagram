@@ -318,6 +318,66 @@ const getPostLikes = asyncHandler(async (req, res) => {
     data: likes.map(l => l.User)
   });
 });
+
+const getExplorePosts = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+  const offset = (page - 1) * limit;
+
+  // Get blocked users
+  const blocked = await Block.findAll({
+    where: {
+      [Op.or]: [
+        { blockerId: req.user.id },
+        { blockedId: req.user.id }
+      ]
+    }
+  });
+  const blockedIds = blocked.map(b => 
+    b.blockerId === req.user.id ? b.blockedId : b.blockerId
+  );
+
+  // Get public posts sorted by recency, excluding private posts and blocked users
+  const { count, rows: posts } = await Post.findAndCountAll({
+    where: {
+      is_public: true,
+      userId: {
+        [Op.notIn]: blockedIds
+      }
+    },
+    include: [
+      { model: User, attributes: ['username', 'full_name', 'avatar_url'] },
+      { model: PostMedia },
+      { model: Like, attributes: ['userId'] }
+    ],
+    order: [['createdAt', 'DESC']],
+    offset,
+    limit,
+    distinct: true,
+    subQuery: false
+  });
+
+  // Format posts with like count and user's like status
+  const formattedPosts = posts.map(post => {
+    const postJson = cleanPostTagsAndGetPrivacy(post);
+    const likes_count = post.Likes ? post.Likes.length : 0;
+    const is_liked = post.Likes && post.Likes.some(like => like.userId === req.user.id);
+    return {
+      ...postJson,
+      likes_count,
+      is_liked
+    };
+  });
+
+  res.json({
+    success: true,
+    page,
+    limit,
+    total: count,
+    data: formattedPosts
+  });
+});
+
 module.exports = {
   createPost,
   getPost,
@@ -327,4 +387,5 @@ module.exports = {
   likePost,
   unlikePost,
   getPostLikes,
+  getExplorePosts,
 };

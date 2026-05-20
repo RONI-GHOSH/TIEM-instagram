@@ -9,10 +9,12 @@ const {
   likePost,
   unlikePost,
   getPostLikes,
+  getExplorePosts,
 } = require("../controllers/postController")
 const { protect } = require('../middleware/authMiddleware')
 const { uploadPostMedia } = require('../config/cloudinary')
 router.use(protect);
+router.get('/explore', getExplorePosts)
 router.post('/', uploadPostMedia.array('media', 10), createPost)
 router.get('/:post_id', getPost)
 router.patch('/:post_id', uploadPostMedia.array('media', 10), editPost)

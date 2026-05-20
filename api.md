@@ -377,8 +377,57 @@ Returns a list of recommended users that the current user is not following. Usef
 ## 🔍 Search (`/search`) - All Protected
 
 ### Fuzzy Search
-- **URL**: `/search/users?q=query`
+Returns both user and public post search results for a single query.
+- **URL**: `/search?q=query`
 - **Method**: `GET`
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Query Params**:
+  - `q`: String (required)
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "users": [
+      {
+        "username": "jane_smith",
+        "full_name": "Jane Smith",
+        "avatar_url": "https://res.cloudinary.com/...",
+        "department": "Information Technology",
+        "year": 1
+      }
+    ],
+    "posts": [
+      {
+        "id": "111d7eb4-8f35-4cb2-8d76-d6b7b6299601",
+        "userId": "e81d7eb4-8f35-4cb2-8d76-d6b7b62996e3",
+        "caption": "A beautiful morning on campus!",
+        "type": "image",
+        "location": "Main Quad",
+        "tags": ["morning", "campus"],
+        "is_public": true,
+        "createdAt": "2026-05-19T10:15:30.000Z",
+        "updatedAt": "2026-05-19T10:15:30.000Z",
+        "likes_count": 42,
+        "is_liked": true,
+        "User": {
+          "username": "jane_smith",
+          "full_name": "Jane Smith",
+          "avatar_url": "https://res.cloudinary.com/..."
+        },
+        "PostMedia": [
+          {
+            "id": "222d7eb4-8f35-4cb2-8d76-d6b7b6299611",
+            "postId": "111d7eb4-8f35-4cb2-8d76-d6b7b6299601",
+            "url": "https://res.cloudinary.com/...",
+            "type": "image"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ### Exact Match
 - **URL**: `/search/users/exact?username=john`
@@ -499,6 +548,58 @@ Retrieve posts uploaded by a specific user with pagination and sorting by time o
 ### Get Post Likers
 - **URL**: `/posts/:post_id/likes`
 - **Method**: `GET`
+
+### Explore Public Posts (Discover by Recency)
+Returns a paginated list of public posts sorted by most recent first, for content discovery. Perfect for a feed or explore section.
+- **URL**: `/posts/explore?page=1&limit=20`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Query Params**:
+  - `page`: Number (optional, page offset, default: `1`)
+  - `limit`: Number (optional, page size, default: `20`, max: `100`)
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "page": 1,
+  "limit": 20,
+  "total": 145,
+  "data": [
+    {
+      "id": "111d7eb4-8f35-4cb2-8d76-d6b7b6299604",
+      "userId": "f92d7eb4-8f35-4cb2-8d76-d6b7b62996f4",
+      "caption": "Enjoying the college festival.",
+      "type": "video",
+      "location": "Auditorium",
+      "tags": ["festival", "fun"],
+      "is_public": true,
+      "privacy": "public",
+      "createdAt": "2026-05-19T11:15:00.000Z",
+      "updatedAt": "2026-05-19T11:15:00.000Z",
+      "likes_count": 18,
+      "is_liked": false,
+      "User": {
+        "username": "bob_brown",
+        "full_name": "Bob Brown",
+        "avatar_url": "https://res.cloudinary.com/..."
+      },
+      "PostMedia": [
+        {
+          "id": "222d7eb4-8f35-4cb2-8d76-d6b7b6299612",
+          "postId": "111d7eb4-8f35-4cb2-8d76-d6b7b6299604",
+          "url": "https://res.cloudinary.com/...",
+          "type": "video"
+        }
+      ]
+    }
+  ]
+}
+```
+**Algorithm**: 
+- Shows public posts from all users (excluding blocked users)
+- Sorted by creation date (newest first)
+- Each post includes like count and current user's like status
+- Excludes private posts and posts from users who blocked the viewer
 
 ---
 
