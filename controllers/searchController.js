@@ -51,18 +51,9 @@ const searchPosts = asyncHandler(async (req, res) => {
       [Op.or]: [
         { caption: { [Op.iLike]: `%${q}%` } },
         { location: { [Op.iLike]: `%${q}%` } },
+        Sequelize.literal(`EXISTS (SELECT 1 FROM jsonb_array_elements_text("tags") AS t WHERE t ILIKE '%${q}%')`),
         Sequelize.where(
-          Sequelize.fn('array_to_string', Sequelize.col('tags'), ' '),
-          { [Op.iLike]: `%${q}%` }
-        ),
-        Sequelize.where(
-          Sequelize.fn('concat',
-            Sequelize.fn('COALESCE', Sequelize.col('caption'), ''),
-            ' ',
-            Sequelize.fn('COALESCE', Sequelize.col('location'), ''),
-            ' ',
-            Sequelize.fn('COALESCE', Sequelize.fn('array_to_string', Sequelize.col('tags'), ' '), '')
-          ),
+          Sequelize.literal(`COALESCE("caption", '') || ' ' || COALESCE("location", '') || ' ' || COALESCE((SELECT string_agg(value, ' ') FROM jsonb_array_elements_text("tags")), '')`),
           { [Op.iLike]: `%${q}%` }
         )
       ]
@@ -111,20 +102,9 @@ const searchAll = asyncHandler(async (req, res) => {
       [Op.or]: [
         { caption: { [Op.iLike]: `%${q}%` } },
         { location: { [Op.iLike]: `%${q}%` } },
+        Sequelize.literal(`EXISTS (SELECT 1 FROM jsonb_array_elements_text("tags") AS t WHERE t ILIKE '%${q}%')`),
         Sequelize.where(
-          Sequelize.fn('array_to_string', Sequelize.col('tags'), ' '),
-          {
-            [Op.iLike]: `%${q}%`
-          }
-        ),
-        Sequelize.where(
-          Sequelize.fn('concat',
-            Sequelize.fn('COALESCE', Sequelize.col('caption'), ''),
-            ' ',
-            Sequelize.fn('COALESCE', Sequelize.col('location'), ''),
-            ' ',
-            Sequelize.fn('COALESCE', Sequelize.fn('array_to_string', Sequelize.col('tags'), ' '), '')
-          ),
+          Sequelize.literal(`COALESCE("caption", '') || ' ' || COALESCE("location", '') || ' ' || COALESCE((SELECT string_agg(value, ' ') FROM jsonb_array_elements_text("tags")), '')`),
           {
             [Op.iLike]: `%${q}%`
           }
