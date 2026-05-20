@@ -313,10 +313,35 @@ Removes the current user's profile picture.
 ### Follow User
 - **URL**: `/users/:username/follow`
 - **Method**: `POST`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "message": "Follow request sent",
+  "requested": true
+}
+```
 
 ### Unfollow User
 - **URL**: `/users/:username/follow`
 - **Method**: `DELETE`
+
+### Follow Status
+Check whether the current user is already following another user or has a pending request.
+- **URL**: `/users/:username/follow-status`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "following": false,
+    "requested": true,
+    "status": "pending"
+  }
+}
+```
 
 ### Accept/Reject Follow Request
 - **POST**: `/users/:username/follow/accept`
@@ -426,6 +451,48 @@ Returns both user and public post search results for a single query.
       }
     ]
   }
+}
+```
+
+### Search Posts
+Searches public posts by caption, tags, location, or full combined text.
+- **URL**: `/search/posts?q=query`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Query Params**:
+  - `q`: String (required)
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "111d7eb4-8f35-4cb2-8d76-d6b7b6299601",
+      "userId": "e81d7eb4-8f35-4cb2-8d76-d6b7b62996e3",
+      "caption": "A beautiful morning on campus!",
+      "type": "image",
+      "location": "Main Quad",
+      "tags": ["morning", "campus"],
+      "is_public": true,
+      "createdAt": "2026-05-19T10:15:30.000Z",
+      "updatedAt": "2026-05-19T10:15:30.000Z",
+      "likes_count": 42,
+      "is_liked": true,
+      "User": {
+        "username": "jane_smith",
+        "full_name": "Jane Smith",
+        "avatar_url": "https://res.cloudinary.com/..."
+      },
+      "PostMedia": [
+        {
+          "id": "222d7eb4-8f35-4cb2-8d76-d6b7b6299611",
+          "postId": "111d7eb4-8f35-4cb2-8d76-d6b7b6299601",
+          "url": "https://res.cloudinary.com/...",
+          "type": "image"
+        }
+      ]
+    }
+  ]
 }
 ```
 

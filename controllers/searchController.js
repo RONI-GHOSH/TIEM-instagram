@@ -5,6 +5,17 @@ const Post = require('../models/Post');
 const PostMedia = require('../models/PostMedia');
 const Like = require('../models/Like');
 
+const formatPostResult = (post, userId) => {
+  const postJson = typeof post.toJSON === 'function' ? post.toJSON() : post;
+  const likes_count = postJson.Likes ? postJson.Likes.length : 0;
+  const is_liked = postJson.Likes ? postJson.Likes.some(like => like.userId === userId) : false;
+  return {
+    ...postJson,
+    likes_count,
+    is_liked
+  };
+};
+
 const searchUsers = asyncHandler(async (req, res) => {
   const { q } = req.query;
   if (!q) {
@@ -24,6 +35,55 @@ const searchUsers = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: users
+  });
+});
+
+const searchPosts = asyncHandler(async (req, res) => {
+  const { q } = req.query;
+  if (!q) {
+    res.status(400);
+    throw new Error('Search query is required');
+  }
+
+  const posts = await Post.findAll({
+    where: {
+      is_public: true,
+      [Op.or]: [
+        { caption: { [Op.iLike]: `%${q}%` } },
+        { location: { [Op.iLike]: `%${q}%` } },
+        Sequelize.where(
+          Sequelize.fn('array_to_string', Sequelize.col('tags'), ' '),
+          { [Op.iLike]: `%${q}%` }
+        ),
+        Sequelize.where(
+          Sequelize.fn('concat',
+            Sequelize.fn('COALESCE', Sequelize.col('caption'), ''),
+            ' ',
+            Sequelize.fn('COALESCE', Sequelize.col('location'), ''),
+            ' ',
+            Sequelize.fn('COALESCE', Sequelize.fn('array_to_string', Sequelize.col('tags'), ' '), '')
+          ),
+          { [Op.iLike]: `%${q}%` }
+        )
+      ]
+    },
+    include: [
+      {
+        model: User,
+        attributes: ['username', 'full_name', 'avatar_url']
+      },
+      { model: PostMedia },
+      { model: Like, attributes: ['userId'] }
+    ],
+    order: [['createdAt', 'DESC']],
+    limit: 20,
+    distinct: true,
+    subQuery: false
+  });
+
+  res.json({
+    success: true,
+    data: posts.map(post => formatPostResult(post, req.user.id))
   });
 });
 
@@ -56,6 +116,18 @@ const searchAll = asyncHandler(async (req, res) => {
           {
             [Op.iLike]: `%${q}%`
           }
+        ),
+        Sequelize.where(
+          Sequelize.fn('concat',
+            Sequelize.fn('COALESCE', Sequelize.col('caption'), ''),
+            ' ',
+            Sequelize.fn('COALESCE', Sequelize.col('location'), ''),
+            ' ',
+            Sequelize.fn('COALESCE', Sequelize.fn('array_to_string', Sequelize.col('tags'), ' '), '')
+          ),
+          {
+            [Op.iLike]: `%${q}%`
+          }
         )
       ]
     },
@@ -73,22 +145,11 @@ const searchAll = asyncHandler(async (req, res) => {
     subQuery: false
   });
 
-  const formattedPosts = posts.map(post => {
-    const postJson = typeof post.toJSON === 'function' ? post.toJSON() : post;
-    const likes_count = postJson.Likes ? postJson.Likes.length : 0;
-    const is_liked = postJson.Likes ? postJson.Likes.some(like => like.userId === req.user.id) : false;
-    return {
-      ...postJson,
-      likes_count,
-      is_liked
-    };
-  });
-
   res.json({
     success: true,
     data: {
       users,
-      posts: formattedPosts
+      posts: posts.map(post => formatPostResult(post, req.user.id))
     }
   });
 });
@@ -116,5 +177,6 @@ const findExactUser = asyncHandler(async (req, res) => {
 module.exports = {
   searchUsers,
   searchAll,
+  searchPosts,
   findExactUser
 };

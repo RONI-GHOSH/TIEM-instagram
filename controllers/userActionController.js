@@ -40,7 +40,51 @@ const followUser = asyncHandler(async (req, res) => {
   });
   res.status(200).json({
     success: true,
-    message: status === 'pending' ? 'Follow request sent' : 'User followed'
+    message: status === 'pending' ? 'Follow request sent' : 'User followed',
+    requested: status === 'pending'
+  });
+});
+
+const getFollowStatus = asyncHandler(async (req, res) => {
+  const targetUser = await User.findOne({ where: { username: req.params.username } });
+  if (!targetUser) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+  if (targetUser.id === req.user.id) {
+    return res.json({
+      success: true,
+      data: {
+        self: true,
+        following: false,
+        requested: false,
+        status: 'self'
+      }
+    });
+  }
+
+  const follow = await Follow.findOne({
+    where: { followerId: req.user.id, followingId: targetUser.id }
+  });
+
+  if (!follow) {
+    return res.json({
+      success: true,
+      data: {
+        following: false,
+        requested: false,
+        status: 'none'
+      }
+    });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      following: follow.status === 'accepted',
+      requested: follow.status === 'pending',
+      status: follow.status
+    }
   });
 });
 const unfollowUser = asyncHandler(async (req, res) => {
@@ -192,14 +236,12 @@ const getPendingRequests = asyncHandler(async (req, res) => {
 const getSuggestedUsers = asyncHandler(async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 10, 50);
   
-  // Get users that current user is already following
   const following = await Follow.findAll({
-    where: { followerId: req.user.id },
+    where: { followerId: req.user.id, status: 'accepted' },
     attributes: ['followingId']
   });
   const followingIds = following.map(f => f.followingId);
   
-  // Get users that have blocked current user or current user has blocked
   const blocked = await Block.findAll({
     where: {
       [Op.or]: [
@@ -211,21 +253,53 @@ const getSuggestedUsers = asyncHandler(async (req, res) => {
   const blockedIds = blocked.map(b => 
     b.blockerId === req.user.id ? b.blockedId : b.blockerId
   );
-  
-  // Get suggested users: not following, not blocked, not self
-  const suggestedUsers = await User.findAll({
-    where: {
-      id: {
-        [Op.notIn]: [req.user.id, ...followingIds, ...blockedIds]
-      }
-    },
-    attributes: ['id', 'username', 'full_name', 'avatar_url', 'bio', 'department', 'year'],
-    order: [['createdAt', 'DESC']],
-    limit,
-    raw: false
-  });
+  const excludeIds = [req.user.id, ...followingIds, ...blockedIds];
 
-  // Count followers for each suggested user
+  // Suggest users from contacts-of-contacts first
+  let suggestedUsers = [];
+  if (followingIds.length > 0) {
+    const connectionFollows = await Follow.findAll({
+      where: {
+        followerId: followingIds,
+        status: 'accepted',
+        followingId: { [Op.notIn]: excludeIds }
+      },
+      attributes: ['followingId']
+    });
+    const connectionIds = [...new Set(connectionFollows.map(f => f.followingId))];
+
+    if (connectionIds.length > 0) {
+      suggestedUsers = await User.findAll({
+        where: { id: connectionIds },
+        attributes: ['id', 'username', 'full_name', 'avatar_url', 'bio', 'department', 'year'],
+        order: [['createdAt', 'DESC']],
+        limit,
+        raw: false
+      });
+    }
+  }
+
+  // Fallback to public users if no connected suggestions exist or the list is smaller than limit
+  if (suggestedUsers.length < limit) {
+    const fallbackLimit = limit - suggestedUsers.length;
+    const publicUsers = await User.findAll({
+      where: {
+        id: { [Op.notIn]: excludeIds },
+        is_private: false
+      },
+      attributes: ['id', 'username', 'full_name', 'avatar_url', 'bio', 'department', 'year'],
+      order: [['createdAt', 'DESC']],
+      limit: fallbackLimit,
+      raw: false
+    });
+
+    const existingIds = new Set(suggestedUsers.map(u => u.id));
+    suggestedUsers = [
+      ...suggestedUsers,
+      ...publicUsers.filter(u => !existingIds.has(u.id))
+    ];
+  }
+
   const suggestedWithStats = await Promise.all(
     suggestedUsers.map(async (user) => {
       const followerCount = await Follow.count({
@@ -238,7 +312,6 @@ const getSuggestedUsers = asyncHandler(async (req, res) => {
     })
   );
 
-  // Sort by followers count (descending) for better suggestions
   suggestedWithStats.sort((a, b) => b.followers_count - a.followers_count);
 
   res.status(200).json({ 
@@ -259,4 +332,5 @@ module.exports = {
   getBlockedList,
   getPendingRequests,
   getSuggestedUsers,
+  getFollowStatus,
 };

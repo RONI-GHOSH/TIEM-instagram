@@ -12,6 +12,7 @@ const {
   getBlockedList,
   getPendingRequests,
   getSuggestedUsers,
+  getFollowStatus,
 } = require('../controllers/userActionController');
 const { getUserPosts } = require('../controllers/postController')
 const { getUserActiveStories } = require('../controllers/storyController')
@@ -22,6 +23,7 @@ router.get('/:username/posts', getUserPosts)
 router.get('/:username/stories', getUserActiveStories)
 router.get('/me/blocked', getBlockedList)
 router.get('/me/follow-requests', getPendingRequests)
+router.get('/:username/follow-status', getFollowStatus)
 router.post('/:username/follow', followUser)
 router.delete('/:username/follow', unfollowUser)
 router.post('/:username/follow/accept', acceptFollowRequest)
