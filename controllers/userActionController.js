@@ -188,6 +188,65 @@ const getPendingRequests = asyncHandler(async (req, res) => {
   });
   res.json({ success: true, data: requesters });
 });
+
+const getSuggestedUsers = asyncHandler(async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+  
+  // Get users that current user is already following
+  const following = await Follow.findAll({
+    where: { followerId: req.user.id },
+    attributes: ['followingId']
+  });
+  const followingIds = following.map(f => f.followingId);
+  
+  // Get users that have blocked current user or current user has blocked
+  const blocked = await Block.findAll({
+    where: {
+      [Op.or]: [
+        { blockerId: req.user.id },
+        { blockedId: req.user.id }
+      ]
+    }
+  });
+  const blockedIds = blocked.map(b => 
+    b.blockerId === req.user.id ? b.blockedId : b.blockerId
+  );
+  
+  // Get suggested users: not following, not blocked, not self
+  const suggestedUsers = await User.findAll({
+    where: {
+      id: {
+        [Op.notIn]: [req.user.id, ...followingIds, ...blockedIds]
+      }
+    },
+    attributes: ['id', 'username', 'full_name', 'avatar_url', 'bio', 'department', 'year'],
+    order: [['createdAt', 'DESC']],
+    limit,
+    raw: false
+  });
+
+  // Count followers for each suggested user
+  const suggestedWithStats = await Promise.all(
+    suggestedUsers.map(async (user) => {
+      const followerCount = await Follow.count({
+        where: { followingId: user.id, status: 'accepted' }
+      });
+      return {
+        ...user.toJSON(),
+        followers_count: followerCount
+      };
+    })
+  );
+
+  // Sort by followers count (descending) for better suggestions
+  suggestedWithStats.sort((a, b) => b.followers_count - a.followers_count);
+
+  res.status(200).json({ 
+    success: true, 
+    data: suggestedWithStats 
+  });
+});
+
 module.exports = {
   followUser,
   unfollowUser,
@@ -199,4 +258,5 @@ module.exports = {
   unblockUser,
   getBlockedList,
   getPendingRequests,
+  getSuggestedUsers,
 };

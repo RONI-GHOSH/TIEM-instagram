@@ -11,11 +11,13 @@ const {
   unblockUser,
   getBlockedList,
   getPendingRequests,
+  getSuggestedUsers,
 } = require('../controllers/userActionController');
 const { getUserPosts } = require('../controllers/postController')
 const { getUserActiveStories } = require('../controllers/storyController')
 const { protect } = require('../middleware/authMiddleware')
 router.use(protect);
+router.get('/suggested', getSuggestedUsers);
 router.get('/:username/posts', getUserPosts)
 router.get('/:username/stories', getUserActiveStories)
 router.get('/me/blocked', getBlockedList)

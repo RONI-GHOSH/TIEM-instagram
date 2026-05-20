@@ -332,6 +332,46 @@ Removes the current user's profile picture.
 - **GET**: `/users/me/blocked`
 - **GET**: `/users/me/follow-requests`
 
+### Get Suggested Users
+Returns a list of recommended users that the current user is not following. Useful for user discovery feature.
+- **URL**: `/users/suggested?limit=10`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Query Params**:
+  - `limit`: Number (optional, maximum number of suggestions to return. Default: `10`, max: `50`)
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "f92d7eb4-8f35-4cb2-8d76-d6b7b62996f4",
+      "username": "bob_brown",
+      "full_name": "Bob Brown",
+      "avatar_url": "https://res.cloudinary.com/...",
+      "bio": "Electronics enthusiast",
+      "department": "Electronics",
+      "year": 3,
+      "followers_count": 25
+    },
+    {
+      "id": "e81d7eb4-8f35-4cb2-8d76-d6b7b62996e3",
+      "username": "jane_smith",
+      "full_name": "Jane Smith",
+      "avatar_url": "https://res.cloudinary.com/...",
+      "bio": "Tech lover",
+      "department": "Information Technology",
+      "year": 1,
+      "followers_count": 15
+    }
+  ]
+}
+```
+**Algorithm**: Suggests users sorted by follower count (most popular first), excluding:
+- The current user
+- Users already being followed
+- Blocked users or users who blocked the current user
+
 ---
 
 ## 🔍 Search (`/search`) - All Protected
